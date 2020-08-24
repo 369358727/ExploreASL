@@ -130,7 +130,10 @@ if bCompute4Sets
         end
     else
         % convert names of sets to indices
-        Sets2Check = find(cellfun(@(y) strcmp(Sets2Check, y), x.S.SetsName));
+        for iSetCheck=1:length(Sets2Check)
+            TempCheck(iSetCheck) = find(cellfun(@(y) strcmp(Sets2Check{iSetCheck}, y), x.S.SetsName));
+        end
+        Sets2Check = TempCheck;
     end
 end
 
@@ -310,7 +313,7 @@ for iScanType=1:length(PreFixList)
                         end
 
                         % create the maps
-                        NameIM = [TemplateNameList{iScanType} '_n=' num2str(length(NotOutliers))];
+                        NameIM = [TemplateNameList{iScanType} '_n' num2str(length(NotOutliers))];
                         xASL_wrp_CreatePopulationTemplates_ComputeParametricIm(IM(:,NotOutliers),NameIM, x, FunctionsAre, true);
 
                         if bSaveUnmasked
@@ -318,7 +321,7 @@ for iScanType=1:length(PreFixList)
                         end
                         % ----------------------------------------------------------------------------------------------------
                         % This part checks for individual sets (e.g. create statistic images for each cohort/session etc)
-                        if bCompute4Sets
+                        if ~bCompute4Sets
                             % not requested, skipping
                         elseif isempty(Sets2Check)
                             fprintf('\n');
@@ -330,7 +333,7 @@ for iScanType=1:length(PreFixList)
                                     warning(['Cannot create maps for non-ordinal set ' x.S.SetsName{Sets2Check(iSet)} ', skipping'])
                                 else
                                     % run an iteration for a subset
-                                    xASL_wrp_CreatePopulationTemplates4Sets(x, bSaveUnmasked, bRemoveOutliers, FunctionsAre, Sets2Check, IM, IM2noMask, iSet);
+                                    xASL_wrp_CreatePopulationTemplates4Sets(x, bSaveUnmasked, bRemoveOutliers, FunctionsAre, Sets2Check, IM, IM2noMask, iSet, iScanType, SessionsExist, iSession, TemplateNameList);
                                 end
                             end % iSet=1:length(Sets2Check)
                         end % if bComputeSets
@@ -355,7 +358,7 @@ end
 
 %% ===================================================================================
 %% ===================================================================================
-function xASL_wrp_CreatePopulationTemplates4Sets(x, bSaveUnmasked, bRemoveOutliers, FunctionsAre, Sets2Check, IM, IM2noMask, iSet)
+function xASL_wrp_CreatePopulationTemplates4Sets(x, bSaveUnmasked, bRemoveOutliers, FunctionsAre, Sets2Check, IM, IM2noMask, iSet, iScanType, SessionsExist, iSession, TemplateNameList)
 %xASL_wrp_CreatePopulationTemplates4Sets Subfunction that creates the parametric images for subsets
 
                 
@@ -375,11 +378,11 @@ SetOptions = lower(x.S.SetsOptions{Sets2Check(iSet)});
 
 % if the only options are left & right (and n/a for missing), assume that this is
 % a request to flip hemispheres for the 'right' ones
-bFlipHemisphere = min(cellfun(@(y) ~isempty(regexp(y, '^(left|right|l|r|n/a|nan)$')), SetOptions));
+bFlipHemisphere = min(cellfun(@(y) ~isempty(regexp(y, '^(.|)(left|right|l|r|n/a|nan)(.|)$')), SetOptions));
 
 if bFlipHemisphere
     % get option index for right
-    Index2Flip = find(cellfun(@(y) ~isempty(regexp(y, '^(right|r)$')), SetOptions));
+    Index2Flip = find(cellfun(@(y) ~isempty(regexp(y, '^(.|)(right|r)(.|)$')), SetOptions));
     Images2Flip = x.S.SetsID(:,Sets2Check(iSet))==Index2Flip;
 
     % Flip the images
@@ -400,7 +403,7 @@ if bFlipHemisphere
 
     % now we change the set options & ID to inclusion
     % instead of left/right
-    IndexInclusion = find(cellfun(@(y) ~isempty(regexp(y, '^(left|right|l|r)$')), SetOptions));
+    IndexInclusion = find(cellfun(@(y) ~isempty(regexp(y, '^(.|)(left|right|l|r)(.|)$')), SetOptions));
     SetID = ~max(x.S.SetsID(:,Sets2Check(iSet))==IndexInclusion, [], 2)+1;
     SetOptions = {'' 'n/a'};
     UniqueSet = [1;2];
@@ -434,7 +437,7 @@ for iU=1:length(UniqueSet) % iterate over the options/categories of this set
             end
 
             % compute maps
-            NameIM = [TemplateNameList{iScanType} '_' x.S.SetsName{Sets2Check(iSet)} '_' SetOptions{UniqueSet(iU)} '_n=' num2str(length(NotOutliers))];
+            NameIM = [TemplateNameList{iScanType} '_' x.S.SetsName{Sets2Check(iSet)} '_' SetOptions{UniqueSet(iU)} '_n' num2str(length(NotOutliers))];
             xASL_wrp_CreatePopulationTemplates_ComputeParametricIm(IM(:,NotOutliers), NameIM, x, FunctionsAre, true);
             if bSaveUnmasked
                 IM2noMask = IM2noMask(:,:,:,WithinGroup);
